@@ -24,6 +24,7 @@ public class cellLabScript : MonoBehaviour {
 	//system
 	private string speciesName;
 	private string sciCode;
+	private bool solved;
 
 	//user
 	private bool[][] isChecked = new bool[0][];
@@ -105,7 +106,7 @@ public class cellLabScript : MonoBehaviour {
 		sciCode = CodeGen();
 		Debug.LogFormat("[Cell Lab #{0}] The species name is {1}. Its database identifier is {2}.", _moduleID, speciesName[0].ToString().ToUpperInvariant() + speciesName.Substring(1, speciesName.Length - 1), sciCode);
 		Text[1].text = "ID: " + sciCode + "       Name: " + (speciesName[0].ToString().ToUpperInvariant() + speciesName.Substring(1, speciesName.Length - 1));
-		for (int i = 0; i < 5; i++)
+		for (int i = 0; i < 3; i++)
 			PropertiseCell();
 		RandomiseReferences();
 		UpdateModule();
@@ -156,7 +157,7 @@ public class cellLabScript : MonoBehaviour {
 
 	private void PropertiseCell()
 	{
-		//splitmass, angle, child1angle, child2angle, type, child1, child2
+		//splmass, angle, c1angle, c2angle, type, child1, child2
 		cellProperties = cellProperties.Concat(new int[][] { new int[] { 0, 0, 0, 0, 0, 0, 0, Rnd.Range(0, 256), Rnd.Range(0, 256), Rnd.Range(0, 256) } }).ToArray();
 		isChecked = isChecked.Concat(new bool[][] { new bool[] { false, true, true } }).ToArray();
 		int h = 0, s = 0, v = 0;
@@ -231,6 +232,10 @@ public class cellLabScript : MonoBehaviour {
 			cellAnswers[cellProperties[i][5]][5]++;
 			if (cellProperties[i][5] != cellProperties[i][6])
 				cellAnswers[cellProperties[i][6]][5]++;
+			if (cellProperties[i][5] != i)
+				cellAnswers[cellProperties[i][5]][5]++;
+			if (cellProperties[i][5] != cellProperties[i][6] && cellProperties[i][6] != i)
+				cellAnswers[cellProperties[i][6]][5]++;
 			Debug.LogFormat("[Cell Lab #{0}] M{1} will split into {2}.", _moduleID, i + 1, cellProperties[i].Skip(5).Take(2).Select(x => "M" + (x + 1).ToString()).Join(" and "));
 		}
 		int[] conversion = { 4, 5, 1, 0, 2, 3 };
@@ -293,6 +298,7 @@ public class cellLabScript : MonoBehaviour {
 		if (solve)
 		{
 			Module.HandlePass();
+			solved = true;
 			StartCoroutine(AnimateSolve());
 		}
 	}
@@ -339,7 +345,7 @@ public class cellLabScript : MonoBehaviour {
 	}
 
 #pragma warning disable 414
-	private string TwitchHelpMessage = "'!{0} goto M1' to move to M1. '!{0} set splitmass 0,22ng' to set the current cells split mass to 0,22ng. Valid parameters for 'set' are splitmass, splitangle, child1angle, child2angle, type, makeadhesin, child1adhesin, child2adhesin. Type must be abbreviated, boxes must be checked/unchecked by setting them true/false. Commands can be chained using a semicolon.";
+	private string TwitchHelpMessage = "'!{0} goto M1' to move to M1. '!{0} set splmass 0,22ng' to set the current cells split mass to 0,22ng. Valid parameters for 'set' are splmass, splangle, c1angle, c2angle, type, makeadh, c1adh, c2adh. Type must be abbreviated, boxes must be checked/unchecked by setting them true/false. Commands can be chained using a semicolon.";
 #pragma warning restore 414
 	IEnumerator ProcessTwitchCommand(string command)
 	{
@@ -348,7 +354,7 @@ public class cellLabScript : MonoBehaviour {
 		string[] cmds = command.Split(';');
 		string[] validbasecmds = { "goto", "set" };
 		string[] validgotocmds = { "m1", "m2", "m3", "m4", "m5" };
-		string[] validsetcmds = { "splitmass", "splitangle", "child1angle", "child2angle", "type", "makeadhesin", "child1adhesin", "child2adhesin" };
+		string[] validsetcmds = { "splmass", "splangle", "c1angle", "c2angle", "type", "makeadh", "c1adh", "c2adh" };
 		string[] validmasscmds = { "0,00ng", "0,22ng", "0,44ng", "0,66ng", "0,88ng", "1,10ng", "1,32ng", "1,54ng", "1,76ng", "1,98ng", "2,20ng", "2,42ng", "2,64ng", "2,86ng", "3,08ng", "never" };
 		string[] validanglecmds = { "0", "15", "30", "45", "60", "75", "90", "105", "120", "135", "150", "165", "180", "195", "210", "225", "240", "255", "270", "285", "300", "315", "330", "345", };
 		string[] validtypes = { "pg", "fl", "pt", "dv", "lp", "kt" };
@@ -369,28 +375,28 @@ public class cellLabScript : MonoBehaviour {
 				}
 				switch (cmds[i].Split(' ')[1])
 				{
-					case "splitmass":
+					case "splmass":
 						if (!validmasscmds.Contains(cmds[i].Split(' ')[2]))
 						{
 							yield return "sendtochaterror Invalid command.";
 							yield break;
 						}
 						break;
-					case "splitangle":
+					case "splangle":
 						if (!validanglecmds.Contains(cmds[i].Split(' ')[2]))
 						{
 							yield return "sendtochaterror Invalid command.";
 							yield break;
 						}
 						break;
-					case "child1angle":
+					case "c1angle":
 						if (!validanglecmds.Contains(cmds[i].Split(' ')[2]))
 						{
 							yield return "sendtochaterror Invalid command.";
 							yield break;
 						}
 						break;
-					case "child2angle":
+					case "c2angle":
 						if (!validanglecmds.Contains(cmds[i].Split(' ')[2]))
 						{
 							yield return "sendtochaterror Invalid command.";
@@ -404,21 +410,21 @@ public class cellLabScript : MonoBehaviour {
 							yield break;
 						}
 						break;
-					case "makeadhesin":
+					case "makeadh":
 						if (!bools.Contains(cmds[i].Split(' ')[2]))
 						{
 							yield return "sendtochaterror Invalid command.";
 							yield break;
 						}
 						break;
-					case "child1adhesin":
+					case "c1adh":
 						if (!bools.Contains(cmds[i].Split(' ')[2]))
 						{
 							yield return "sendtochaterror Invalid command.";
 							yield break;
 						}
 						break;
-					case "child2adhesin":
+					case "c2adh":
 						if (!bools.Contains(cmds[i].Split(' ')[2]))
 						{
 							yield return "sendtochaterror Invalid command.";
@@ -442,28 +448,28 @@ public class cellLabScript : MonoBehaviour {
 			{
 				switch (cmds[i].Split(' ')[1])
 				{
-					case "splitmass":
+					case "splmass":
 						while (validmasscmds[cellProperties[currentCell][0]] != cmds[i].Split(' ')[2])
 						{
 							Buttons[1].OnInteract();
 							yield return null;
 						}
 						break;
-					case "splitangle":
+					case "splangle":
 						while (validanglecmds[cellProperties[currentCell][1]] != cmds[i].Split(' ')[2])
 						{
 							Buttons[2].OnInteract();
 							yield return null;
 						}
 						break;
-					case "child1angle":
+					case "c1angle":
 						while (validanglecmds[cellProperties[currentCell][2]] != cmds[i].Split(' ')[2])
 						{
 							Buttons[3].OnInteract();
 							yield return null;
 						}
 						break;
-					case "child2angle":
+					case "c2angle":
 						while (validanglecmds[cellProperties[currentCell][3]] != cmds[i].Split(' ')[2])
 						{
 							Buttons[4].OnInteract();
@@ -477,19 +483,19 @@ public class cellLabScript : MonoBehaviour {
 							yield return null;
 						}
 						break;
-					case "makeadhesin":
+					case "makeadh":
 						if (isChecked[currentCell][0] != (cmds[i].Split(' ')[2] == "true"))
 						{
 							Checkboxes[0].OnInteract();
 						}
 						break;
-					case "child1adhesin":
+					case "c1adh":
 						if (isChecked[currentCell][1] != (cmds[i].Split(' ')[2] == "true"))
 						{
 							Checkboxes[1].OnInteract();
 						}
 						break;
-					case "child2adhesin":
+					case "c2adh":
 						if (isChecked[currentCell][2] != (cmds[i].Split(' ')[2] == "true"))
 						{
 							Checkboxes[2].OnInteract();
@@ -507,5 +513,45 @@ public class cellLabScript : MonoBehaviour {
 			}
 		}
 		yield return null;
+	}
+
+	IEnumerator TwitchHandleForcedSolve()
+	{
+		yield return true;
+		bool[][] bools = new bool[][] { new bool[] { false, false, false }, new bool[] { false, false, true }, new bool[] { false, true, false }, new bool[] { false, true, true }, new bool[] { true, false, false }, new bool[] { true, false, true }, new bool[] { true, true, false }, new bool[] { true, true, true } };
+		while (!solved)
+		{
+			while (cellAnswers[currentCell][0] != cellProperties[currentCell][0])
+			{
+				Buttons[1].OnInteract();
+				yield return true;
+			}
+			if (cellAnswers[currentCell][0] != 15 || cellProperties[currentCell][0] != 15)
+			{
+				for (int j = 1; j < 4; j++)
+				{
+					while (cellAnswers[currentCell][j] != cellProperties[currentCell][j])
+					{
+						Buttons[j + 1].OnInteract();
+						yield return true;
+					}
+				}
+				for (int j = 0; j < 3; j++)
+				{
+					while (bools[cellAnswers[currentCell][4]][j] != isChecked[currentCell][j])
+					{
+						Checkboxes[j].OnInteract();
+						yield return true;
+					}
+				}
+			}
+			while (cellAnswers[currentCell][5] != cellProperties[currentCell][4])
+			{
+				Buttons[5].OnInteract();
+				yield return true;
+			}
+			Buttons[0].OnInteract();
+			yield return true;
+		}
 	}
 }
