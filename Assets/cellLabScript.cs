@@ -29,6 +29,7 @@ public class cellLabScript : MonoBehaviour {
 	//user
 	private bool[][] isChecked = new bool[0][];
 	private int[][] cellProperties = new int[0][];
+	private int[] hsvWhen = new int[3];
 	private int[][] cellAnswers = new int[0][];
 	private int currentCell;
 
@@ -51,6 +52,8 @@ public class cellLabScript : MonoBehaviour {
 					Checkboxes[x].GetComponent<MeshRenderer>().material.color = new Color32(255, 199, 63, 255);
 				else
 					Checkboxes[x].GetComponent<MeshRenderer>().material.color = new Color32(31, 31, 31, 255);
+				ForceSolution();
+				UpdateModule();
 				CheckSolve();
 				return false;
 			};
@@ -86,6 +89,7 @@ public class cellLabScript : MonoBehaviour {
 					if (x == 5)
 						cellProperties[currentCell][x - 1] %= 6;
 				}
+				ForceSolution();
 				UpdateModule();
 				CheckSolve();
 				return false;
@@ -106,9 +110,11 @@ public class cellLabScript : MonoBehaviour {
 		sciCode = CodeGen();
 		Debug.LogFormat("[Cell Lab #{0}] The species name is {1}. Its database identifier is {2}.", _moduleID, speciesName[0].ToString().ToUpperInvariant() + speciesName.Substring(1, speciesName.Length - 1), sciCode);
 		Text[1].text = "ID: " + sciCode + "       Name: " + (speciesName[0].ToString().ToUpperInvariant() + speciesName.Substring(1, speciesName.Length - 1));
+		hsvWhen = Enumerable.Range(0, 3).ToList().Shuffle().ToArray();
 		for (int i = 0; i < 3; i++)
 			PropertiseCell();
 		RandomiseReferences();
+		ForceSolution();
 		UpdateModule();
 	}
 
@@ -219,7 +225,7 @@ public class cellLabScript : MonoBehaviour {
 			cellAnswers = cellAnswers.Concat(new int[][] { new int[] { h % 15, h / 15, (s - 5) % 24, (v - 5) % 24, 4 * ((v - 5) / 48) + 2 * ((s - 5) / 24 % 2) + ((v - 5) / 24 % 2), 0 } }).ToArray();
 			string[] masses = { "0,00ng", "0,22ng", "0,44ng", "0,66ng", "0,88ng", "1,10ng", "1,32ng", "1,54ng", "1,76ng", "1,98ng", "2,20ng", "2,42ng", "2,64ng", "2,86ng", "3,08ng", "never" };
 			string[] sentences = { "All boxes should be unchecked", "Only the child 2 box should be checked", "Only the child 1 box should be checked", "Both child boxes should be checked", "Only the parent box should be checked", "Only the child 1 box should be unchecked", "Only the child 2 box should be unchecked", "All boxes should be checked" };
-			Debug.LogFormat("[Cell Lab #{0}] M{1} will split when its mass is {2} at an angle of {3}°. Its children will be relatively angled at {4}. {5}.", _moduleID, cellAnswers.Length, masses[cellAnswers[cellAnswers.Length - 1][0]], cellAnswers[cellAnswers.Length - 1][1] * 15, cellAnswers[cellAnswers.Length - 1].Skip(2).Take(2).Select(x => (x * 15).ToString() + "°").Join(" and "), sentences[cellAnswers[cellAnswers.Length - 1][4]]);
+			Debug.LogFormat("[Cell Lab #{0}] M{1} will split when its mass is {2} at an angle of {3}°. Its children will be relatively angled at {4}. {5}. The channel to be calculated is {6}.", _moduleID, cellAnswers.Length, masses[cellAnswers[cellAnswers.Length - 1][0]], cellAnswers[cellAnswers.Length - 1][1] * 15, cellAnswers[cellAnswers.Length - 1].Skip(2).Take(2).Select(x => (x * 15).ToString() + "°").Join(" and "), sentences[cellAnswers[cellAnswers.Length - 1][4]], "HSV"[hsvWhen[cellAnswers.Length - 1]]);
 		}
 	}
 
@@ -344,6 +350,36 @@ public class cellLabScript : MonoBehaviour {
 		}
 	}
 
+	void ForceSolution()
+    {
+		bool[][] bools = new bool[][] { new bool[] { false, false, false }, new bool[] { false, false, true }, new bool[] { false, true, false }, new bool[] { false, true, true }, new bool[] { true, false, false }, new bool[] { true, false, true }, new bool[] { true, true, false }, new bool[] { true, true, true } };
+		for (int i = 0; i < 3; i++)
+		{
+			if (hsvWhen[i] != 0 || cellAnswers[i][0] == 15)
+			{
+				cellProperties[i][0] = cellAnswers[i][0];
+			}
+			if (cellAnswers[i][0] != 15)
+			{
+				if (hsvWhen[i] != 0)
+				{
+					cellProperties[i][1] = cellAnswers[i][1];
+				}
+				if (hsvWhen[i] != 1)
+				{
+					cellProperties[i][2] = cellAnswers[i][2];
+					isChecked[i][1] = bools[cellAnswers[i][4]][1];
+				}
+				if (hsvWhen[i] != 2)
+				{
+					cellProperties[i][3] = cellAnswers[i][3];
+					isChecked[i][0] = bools[cellAnswers[i][4]][0];
+					isChecked[i][2] = bools[cellAnswers[i][4]][2];
+				}
+			}
+		}
+	}
+
 #pragma warning disable 414
 	private string TwitchHelpMessage = "'!{0} goto M1' to move to M1. '!{0} set splmass 0,22ng' to set the current cells split mass to 0,22ng. Valid parameters for 'set' are splmass, splangle, c1angle, c2angle, type, makeadh, c1adh, c2adh. Type must be abbreviated, boxes must be checked/unchecked by setting them true/false. Commands can be chained using a semicolon.";
 #pragma warning restore 414
@@ -353,7 +389,7 @@ public class cellLabScript : MonoBehaviour {
 		command = command.ToLowerInvariant();
 		string[] cmds = command.Split(';');
 		string[] validbasecmds = { "goto", "set" };
-		string[] validgotocmds = { "m1", "m2", "m3", "m4", "m5" };
+		string[] validgotocmds = { "m1", "m2", "m3" };
 		string[] validsetcmds = { "splmass", "splangle", "c1angle", "c2angle", "type", "makeadh", "c1adh", "c2adh" };
 		string[] validmasscmds = { "0,00ng", "0,22ng", "0,44ng", "0,66ng", "0,88ng", "1,10ng", "1,32ng", "1,54ng", "1,76ng", "1,98ng", "2,20ng", "2,42ng", "2,64ng", "2,86ng", "3,08ng", "never" };
 		string[] validanglecmds = { "0", "15", "30", "45", "60", "75", "90", "105", "120", "135", "150", "165", "180", "195", "210", "225", "240", "255", "270", "285", "300", "315", "330", "345", };
@@ -449,28 +485,28 @@ public class cellLabScript : MonoBehaviour {
 				switch (cmds[i].Split(' ')[1])
 				{
 					case "splmass":
-						while (validmasscmds[cellProperties[currentCell][0]] != cmds[i].Split(' ')[2])
+						while (validmasscmds[cellProperties[currentCell][0]] != cmds[i].Split(' ')[2] && hsvWhen[currentCell] == 0 && cellAnswers[currentCell][0] != 15)
 						{
 							Buttons[1].OnInteract();
 							yield return null;
 						}
 						break;
 					case "splangle":
-						while (validanglecmds[cellProperties[currentCell][1]] != cmds[i].Split(' ')[2])
+						while (validanglecmds[cellProperties[currentCell][1]] != cmds[i].Split(' ')[2] && hsvWhen[currentCell] == 0 && cellAnswers[currentCell][0] != 15)
 						{
 							Buttons[2].OnInteract();
 							yield return null;
 						}
 						break;
 					case "c1angle":
-						while (validanglecmds[cellProperties[currentCell][2]] != cmds[i].Split(' ')[2])
+						while (validanglecmds[cellProperties[currentCell][2]] != cmds[i].Split(' ')[2] && hsvWhen[currentCell] == 1 && cellAnswers[currentCell][0] != 15)
 						{
 							Buttons[3].OnInteract();
 							yield return null;
 						}
 						break;
 					case "c2angle":
-						while (validanglecmds[cellProperties[currentCell][3]] != cmds[i].Split(' ')[2])
+						while (validanglecmds[cellProperties[currentCell][3]] != cmds[i].Split(' ')[2] && hsvWhen[currentCell] == 2 && cellAnswers[currentCell][0] != 15)
 						{
 							Buttons[4].OnInteract();
 							yield return null;
@@ -484,19 +520,19 @@ public class cellLabScript : MonoBehaviour {
 						}
 						break;
 					case "makeadh":
-						if (isChecked[currentCell][0] != (cmds[i].Split(' ')[2] == "true"))
+						if (isChecked[currentCell][0] != (cmds[i].Split(' ')[2] == "true") && hsvWhen[currentCell] == 2 && cellAnswers[currentCell][0] != 15)
 						{
 							Checkboxes[0].OnInteract();
 						}
 						break;
 					case "c1adh":
-						if (isChecked[currentCell][1] != (cmds[i].Split(' ')[2] == "true"))
+						if (isChecked[currentCell][1] != (cmds[i].Split(' ')[2] == "true") && hsvWhen[currentCell] == 1 && cellAnswers[currentCell][0] != 15)
 						{
 							Checkboxes[1].OnInteract();
 						}
 						break;
 					case "c2adh":
-						if (isChecked[currentCell][2] != (cmds[i].Split(' ')[2] == "true"))
+						if (isChecked[currentCell][2] != (cmds[i].Split(' ')[2] == "true") && hsvWhen[currentCell] == 2 && cellAnswers[currentCell][0] != 15)
 						{
 							Checkboxes[2].OnInteract();
 						}
